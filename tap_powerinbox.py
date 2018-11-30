@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """A singer tap to make GET requests to Powerinbox - RevenueStripe."""
 
+#make all imports
 import json
 import sys
 import time
@@ -9,12 +10,16 @@ import requests
 import singer
 import backoff
 
+#get the most recent date - add to the url
 URL_DATE = datetime.strftime(datetime.now() - timedelta(1), '%Y-%m-%d')
+
+#base_url to make the get request. params added later
 BASE_URL = 'https://reports.revenuestripe.com/company/'
 
 LOGGER = singer.get_logger()
 SESSION = requests.Session()
 
+#define the schema for the response
 SCHEMA = {
     "type": [
         "null",
@@ -97,6 +102,7 @@ def do_sync(guid, company_id, url_date):
     """Use the request function to get data and write the schema and response to singer"""
     LOGGER.info('Getting data from powerinbox')
 
+    # company_id and guid pulled from config file and use date declared above
     ext_url = ('{company_id}/{guid}/all_stripe/{url_date}.json'
                .format(company_id=company_id, guid=guid, url_date=url_date))
 
