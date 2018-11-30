@@ -38,7 +38,7 @@ Each header denotes the table name.
 - Description: values returned from the GET request
 
 | NAME          | TYPE   | DESCRIPTION  |
-| ------------- |:------:| ------------------------------------------------------------------:|
+| ------------- |:------:| :-----------------------------------------------------------------:|
 | date          | string | The date in YYYY-MM-DD format (UTC)                                |
 | stripe        | number | The stripe Id                                                      |
 | sub_id        | string | The subId passed in the stripe url query parameter                 |
