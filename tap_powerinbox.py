@@ -77,6 +77,7 @@ def giveup(error):
 @backoff.on_exception(backoff.constant,
                       (requests.exceptions.RequestException),
                       jitter=backoff.random_jitter,
+                      max_time=100,
                       max_tries=5,
                       giveup=giveup,
                       interval=30)
