@@ -104,8 +104,8 @@ def do_sync(guid, company_id, url_date):
         response = requests.get(BASE_URL+ext_url)
         payload = response.json()
         for record in payload:
-            singer.write_schema('response', SCHEMA, 'stripe')
-            singer.write_records('response', [parse_response(record)])
+            singer.write_schema('powerinbox_response', SCHEMA, 'stripe')
+            singer.write_records('powerinbox_response', [parse_response(record)])
 
     except requests.exceptions.RequestException as err:
         LOGGER.fatal('Error on ' + err.request.url +
