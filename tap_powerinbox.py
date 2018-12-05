@@ -96,7 +96,7 @@ def parse_response(values):
     final['unique_opens'] = values['unique_opens']
     final['total_clicks'] = values['total_clicks']
     final['net_revenue'] = values['net_revenue']
-    final['date'] = time.strftime('%Y-%m-%d %H:%M:%S', time.strptime(values['date'], '%Y-%m-%d'))
+    final['date'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.strptime(values['date'], '%Y-%m-%d'))
     return final
 
 def do_sync(guid, company_id, url_date):
