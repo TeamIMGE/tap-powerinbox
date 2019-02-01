@@ -36,6 +36,9 @@ def on_giveup(details):
     raise Exception("Giving up on request after {} tries with url {} " \
                     .format(details['tries'], url))
 
+"""Calls to the API is limited to a maximum of 3 tries if a request isn't completed successfully.
+The tap should remain well below this max during normal use. """
+
 @backoff.on_exception(backoff.expo,
                       requests.exceptions.RequestException,
                       max_tries=3,
