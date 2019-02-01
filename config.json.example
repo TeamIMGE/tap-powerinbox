@@ -1,4 +1,5 @@
 {
   "guid": "add-powerinbox-guid",
-  "company_id": "add-powerinbox-company-id"
+  "company_id": "add-powerinbox-company-id",
+  "start_date": "add-start-date (#format: 1990-01-01)"
 }
