@@ -10,7 +10,7 @@ setup(
     py_modules=["tap_powerinbox"],
     install_requires=[
         "singer-python==5.4.1",
-        "requests==2.13.0",
+        "requests==2.21.0",
         'backoff==1.3.2',
     ],
     extras_require=[
