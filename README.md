@@ -1,5 +1,9 @@
 # tap-powerinbox
-A singer tap to make GET requests to Powerinbox - RevenueStripe.
+This is a [Singer](https://singer.io) tap that produces JSON-formatted data following the [Singer spec](https://github.com/singer-io/getting-started/blob/master/SPEC.md).
+The tap: 
+- Makes GET requests to Powerinbox - RevenueStripe.
+- Pulls data based on input state.
+- Outputs schema, metrics, and json response.
 
 ## Connecting Tap Powerinbox
 
