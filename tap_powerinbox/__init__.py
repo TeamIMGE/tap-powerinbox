@@ -38,9 +38,9 @@ def on_giveup(details):
 
 @backoff.on_exception(backoff.expo,
                       requests.exceptions.RequestException,
-                      jitter=backoff.random_jitter,
-                      max_tries=2,
-                      on_giveup=on_giveup)
+                      max_tries=3,
+                      on_giveup=on_giveup,
+                      factor=2)
 @utils.ratelimit(9, 1)
 
 def request(endpoint):
