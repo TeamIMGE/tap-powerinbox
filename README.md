@@ -14,18 +14,15 @@ To set up Tap Powerinbox in Stitch, you need the following from your Powerinbox 
 1. Retrieve your GUID from Powerinbox.
 2. Retrieve your Company ID from Powerinbox.
 
-Create a [config.json.example](https://github.com/TeamIMGE/tap-powerinbox/blob/master/config.json.example) file in the following format, where `guid` and `company_id` are the credentials you just retrieved.
+Create a [config.json.example](https://github.com/TeamIMGE/tap-powerinbox/blob/master/config.json.example) file in the following format, where `guid` and `company_id` are the credentials you just retrieved. It also accepts an initial `start_date` which is the date the tap starts pulling data from.
 
 ```json
 {
   "guid": "add-powerinbox-guid",
   "company_id": "add-powerinbox-company-id"
+  "start_date": "add-start-date (#format: 1990-01-01)"
 }
 ```
-
-## Replication
-
-- Calls to the Tap Powerinbox API is limited to 100 every 30 seconds, with 5 max tries if a request isn't completed successfully. The tap should remain well below this max during normal use.
 
 ## Table Schemas
 
