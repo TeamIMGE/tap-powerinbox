@@ -88,9 +88,11 @@ def do_sync(guid, company_id, start_date):
 
             response = request(BASE_URL+ext_url)
 
-            for record in response:
-                singer.write_records("powerinbox_response", [record])
-                utils.update_state(STATE, "start_date", next_date.encode("ascii", "ignore"))
+            with metrics.record_counter(BASE_URL+ext_url) as counter:
+                for record in response:
+                    singer.write_records("powerinbox_response", [record])
+                    utils.update_state(STATE, "start_date", next_date.encode("ascii", "ignore"))
+                    counter.increment()
 
             next_date = utils.strftime((utils.strptime_to_utc(next_date)+
                                         timedelta(days=1)), DATE_FORMAT)
