@@ -19,7 +19,7 @@ Create a [config.json.example](https://github.com/TeamIMGE/tap-powerinbox/blob/m
 ```json
 {
   "guid": "add-powerinbox-guid",
-  "company_id": "add-powerinbox-company-id"
+  "company_id": "add-powerinbox-company-id",
   "start_date": "add-start-date"
 }
 ```
