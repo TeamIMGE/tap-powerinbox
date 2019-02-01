@@ -1,134 +1,100 @@
-#!/usr/bin/env python3
-"""A singer tap to make GET requests to Powerinbox - RevenueStripe."""
-
-#make all imports
-import json
-import sys
+import os
 import time
-from datetime import datetime, timedelta
+import re
+import io
+
+import json
+import datetime
+from datetime import timedelta
 import requests
-import singer
 import backoff
+import singer
+from singer import utils, metrics
 
-#get the most recent date - add to the url
-URL_DATE = datetime.strftime(datetime.now() - timedelta(1), '%Y-%m-%d')
 
-#base_url to make the get request. params added later
-BASE_URL = 'https://reports.revenuestripe.com/company/'
+REQUIRED_CONFIG_KEYS = ["guid", "company_id", "start_date"]
+PER_PAGE = 100
+BASE_URL = "https://reports.revenuestripe.com/company/"
+DATE_FORMAT = '%Y-%m-%d'
+
+CONFIG = {}
 
 LOGGER = singer.get_logger()
-SESSION = requests.Session()
+SESSION = requests.session()
 
-#define the schema for the response
-SCHEMA = {
-    "type": [
-        "null",
-        "object"
-    ],
-    "additionalProperties": False,
-    "properties": {
-        "stripe": {
-            "type": [
-                "null",
-                "integer"
-            ]
-        },
-        "sub_id": {
-            "type":  [
-                "null",
-                "string"
-            ]
-        },
-        "unique_opens": {
-            "type":  [
-                "null",
-                "integer"
-            ]
-        },
-        "total_clicks": {
-            "type":  [
-                "null",
-                "integer"
-            ]
-        },
-        "net_revenue": {
-            "type":  [
-                "null",
-                "string"
-            ]
-        },
-        "date": {
-            "type":  [
-                "null",
-                "string",
-            ],
-            "format": "date-time"
-        }
-    }
-}
+def get_abs_path(path):
+    """get absolute path"""
+    return os.path.join(os.path.dirname(os.path.realpath(__file__)), path)
 
-def giveup(error):
-    """Look for errors """
-    LOGGER.error(error.response.text)
-    response = error.response
-    return not (response.status_code == 429 or
-                response.status_code >= 500)
+def load_schema():
+    """get the schema"""
+    return utils.load_json(get_abs_path("schemas/schema.json"))
 
-@backoff.on_exception(backoff.constant,
-                      (requests.exceptions.RequestException),
+def on_giveup(details):
+    """giveup logic for backoff"""
+    url = details["args"]
+    raise Exception("Giving up on request after {} tries with url {} " \
+                    .format(details['tries'], url))
+
+@backoff.on_exception(backoff.expo,
+                      requests.exceptions.RequestException,
                       jitter=backoff.random_jitter,
-                      max_time=100,
-                      max_tries=5,
-                      giveup=giveup,
-                      interval=30)
+                      max_tries=2,
+                      on_giveup=on_giveup)
+@utils.ratelimit(9, 1)
 
-def request(url, params):
-    """Make the GET request"""
-    response = requests.get(url=url, params=params)
-    response.raise_for_status()
-    return response
+def request(endpoint):
+    """make the get request to endpoint"""
+    url = endpoint
+    req = requests.Request("GET", url).prepare()
 
-def parse_response(values):
-    """Format the output before writing to singer.write_records"""
-    final = {}
-    final['stripe'] = values['stripe']
-    final['sub_id'] = values['sub_id']
-    final['unique_opens'] = values['unique_opens']
-    final['total_clicks'] = values['total_clicks']
-    final['net_revenue'] = values['net_revenue']
-    final['date'] = time.strftime('%Y-%m-%dT%H:%M:%SZ', time.strptime(values['date'], '%Y-%m-%d'))
-    return final
+    with metrics.http_request_timer(url) as timer:
+        resp = SESSION.send(req)
+        timer.tags[metrics.Tag.http_status_code] = resp.status_code
 
-def do_sync(guid, company_id, url_date):
+    json_body = resp.json()
+    resp.raise_for_status()
+    return json_body
+
+def do_sync(guid, company_id, start_date):
     """Use the request function to get data and write the schema and response to singer"""
-    LOGGER.info('Getting data from powerinbox')
+    schema = load_schema()
+    LOGGER.info("---------- Writing Schema ----------")
+    singer.write_schema("powerinbox_response", schema, "stripe")
 
-    # company_id and guid pulled from config file and use date declared above
-    ext_url = ('{company_id}/{guid}/all_stripe/{url_date}.json'
-               .format(company_id=company_id, guid=guid, url_date=url_date))
+    LOGGER.info("---------- Starting sync ----------")
+    next_date = start_date
 
     try:
-        response = requests.get(BASE_URL+ext_url)
-        payload = response.json()
-        for record in payload:
-            singer.write_schema('powerinbox_response', SCHEMA, 'stripe')
-            singer.write_records('powerinbox_response', [parse_response(record)])
+        while next_date < utils.strftime(utils.now(), DATE_FORMAT):
 
-    except requests.exceptions.RequestException as err:
-        LOGGER.fatal('Error on ' + err.request.url +
-                     '; received status ' + str(err.response.status_code) +
-                     ': ' + err.response.text)
-        sys.exit(-1)
+            ext_url = ("{company_id}/{guid}/all_stripe/{date}.json"
+                       .format(company_id=company_id, guid=guid, date=next_date))
 
-    LOGGER.info('Tap exiting normally')
+            response = request(BASE_URL+ext_url)
 
+            for record in response:
+                singer.write_records("powerinbox_response", [record])
+                state = {"start_date": next_date.encode('ascii', 'ignore')}
+
+            singer.write_state(state)
+            next_date = utils.strftime((utils.strptime_to_utc(next_date)+
+                                        timedelta(days=1)), DATE_FORMAT)
+
+    except Exception as exc:
+        LOGGER.critical(exc)
+        raise exc
+
+    LOGGER.info("---------- Completed sync ----------")
 
 def main():
-    """Main function"""
-    with open('config.json', 'r') as config_file:
-        config = json.load(config_file)
+    """main function"""
+    args = utils.parse_args(REQUIRED_CONFIG_KEYS)
+    CONFIG.update(args.config)
+    guid = CONFIG["guid"]
+    company_id = CONFIG["company_id"]
+    start_date = CONFIG.get('start_date')
+    do_sync(guid, company_id, start_date)
 
-    do_sync(config['guid'], config['company_id'], URL_DATE)
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
